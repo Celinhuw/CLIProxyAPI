@@ -119,7 +119,9 @@ class AuditLog:
     """Thread-safe SQLite audit log with async helpers."""
 
     def __init__(self, db_path: str | None = None):
+        import threading
         self._db_path = db_path or DEFAULT_DB_PATH
+        self._lock = threading.Lock()
         db_dir = Path(self._db_path).parent
         db_dir.mkdir(parents=True, exist_ok=True)
 
@@ -134,7 +136,7 @@ class AuditLog:
 
     def _insert(self, event_type: str, mapped: dict) -> int:
         cols = ["timestamp", "event_type"]
-        vals = [time.time(), event_type]
+        vals: list = [time.time(), event_type]
 
         for col in (
             "user_id",
@@ -154,8 +156,9 @@ class AuditLog:
         placeholders = ", ".join("?" for _ in cols)
         col_names = ", ".join(cols)
         sql = f"INSERT INTO audit_events ({col_names}) VALUES ({placeholders})"
-        cursor = self._conn.execute(sql, vals)
-        self._conn.commit()
+        with self._lock:
+            cursor = self._conn.execute(sql, vals)
+            self._conn.commit()
         return cursor.lastrowid
 
     def _query(
@@ -189,10 +192,12 @@ class AuditLog:
         )
         params.append(limit)
 
-        cursor = self._conn.execute(sql, params)
-        columns = [desc[0] for desc in cursor.description]
+        with self._lock:
+            cursor = self._conn.execute(sql, params)
+            columns = [desc[0] for desc in cursor.description]
+            raw_rows = cursor.fetchall()
         rows = []
-        for row in cursor.fetchall():
+        for row in raw_rows:
             entry = dict(zip(columns, row))
             if entry.get("details"):
                 try:

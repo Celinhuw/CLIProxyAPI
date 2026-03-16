@@ -1,0 +1,16 @@
+[Unit]
+Description=Shadow-Claw Personal AI Agent (Telegram Gateway)
+After=network.target
+
+[Service]
+Type=simple
+User=celo
+WorkingDirectory=/home/celo/CLIProxyAPI/shadow-claw/gateway
+ExecStart=/home/celo/CLIProxyAPI/shadow-claw/gateway/.venv/bin/python bot.py
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
