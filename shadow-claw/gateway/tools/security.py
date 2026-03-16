@@ -7,7 +7,7 @@ like HTTP header analysis and basic vulnerability detection.
 import json
 import logging
 
-import requests
+import httpx
 
 from agent import tool
 from tools.browser import _is_private_url
@@ -47,13 +47,9 @@ async def security_headers(url: str) -> str:
         return "URL blocked: cannot scan internal/private addresses."
 
     try:
-        resp = requests.head(
-            url,
-            timeout=_REQUEST_TIMEOUT,
-            headers={"User-Agent": "Shadow-Claw-Security/1.0"},
-            allow_redirects=True,
-        )
-    except requests.RequestException as e:
+        async with httpx.AsyncClient(timeout=_REQUEST_TIMEOUT, follow_redirects=True) as client:
+            resp = await client.head(url, headers={"User-Agent": "Shadow-Claw-Security/1.0"})
+    except httpx.HTTPError as e:
         return f"Error connecting to {url}: {e}"
 
     present = []
@@ -102,13 +98,9 @@ async def security_scan(target_url: str) -> str:
     findings = []
 
     try:
-        resp = requests.get(
-            target_url,
-            timeout=_REQUEST_TIMEOUT,
-            headers={"User-Agent": "Shadow-Claw-Security/1.0"},
-            allow_redirects=True,
-        )
-    except requests.RequestException as e:
+        async with httpx.AsyncClient(timeout=_REQUEST_TIMEOUT, follow_redirects=True) as client:
+            resp = await client.get(target_url, headers={"User-Agent": "Shadow-Claw-Security/1.0"})
+    except httpx.HTTPError as e:
         return f"Error connecting to {target_url}: {e}"
 
     # Check server header disclosure

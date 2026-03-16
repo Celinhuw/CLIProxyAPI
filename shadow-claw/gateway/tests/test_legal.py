@@ -2,7 +2,7 @@
 
 import json
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from attention_queue import Urgency
 from handlers.legal_webhook import (
@@ -137,7 +137,7 @@ class TestCheckCaseStatus(unittest.IsolatedAsyncioTestCase):
         result = await check_case_status("0001234-56.2026.5.01.0001")
         self.assertIn("INTIMA_AI_TOKEN not configured", result)
 
-    @patch("tools.legal._intima_request")
+    @patch("tools.legal._intima_request", new_callable=AsyncMock)
     async def test_case_found(self, mock_req):
         mock_req.return_value = {
             "data": {
@@ -156,13 +156,13 @@ class TestCheckCaseStatus(unittest.IsolatedAsyncioTestCase):
 class TestListDeadlines(unittest.IsolatedAsyncioTestCase):
     """Test list_deadlines tool."""
 
-    @patch("tools.legal._intima_request")
+    @patch("tools.legal._intima_request", new_callable=AsyncMock)
     async def test_no_deadlines(self, mock_req):
         mock_req.return_value = {"data": []}
         result = await list_deadlines()
         self.assertIn("No active deadlines", result)
 
-    @patch("tools.legal._intima_request")
+    @patch("tools.legal._intima_request", new_callable=AsyncMock)
     async def test_deadlines_with_urgency(self, mock_req):
         mock_req.return_value = {
             "data": [

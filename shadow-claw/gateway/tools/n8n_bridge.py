@@ -15,7 +15,7 @@ Requires n8n running on VPS: docker-compose up n8n
 import json
 import logging
 
-import requests
+import httpx
 
 import bot_state
 from agent import tool
@@ -31,23 +31,24 @@ def _get_n8n_config() -> tuple[str, str | None]:
     return get_config_value("N8N_URL", _N8N_URL), get_config_value("N8N_API_KEY")
 
 
-def _n8n_request(endpoint: str, method: str = "GET", data: dict | None = None) -> dict:
-    """Make authenticated request to n8n API."""
+async def _n8n_request(endpoint: str, method: str = "GET", data: dict | None = None) -> dict:
+    """Make authenticated async request to n8n API."""
     url, api_key = _get_n8n_config()
     headers = {"Accept": "application/json"}
     if api_key:
         headers["X-N8N-API-KEY"] = api_key
 
     try:
-        if method == "POST":
-            resp = requests.post(f"{url}/api/v1/{endpoint}", json=data, headers=headers, timeout=30)
-        else:
-            resp = requests.get(f"{url}/api/v1/{endpoint}", headers=headers, timeout=30)
+        async with httpx.AsyncClient(timeout=30) as client:
+            if method == "POST":
+                resp = await client.post(f"{url}/api/v1/{endpoint}", json=data, headers=headers)
+            else:
+                resp = await client.get(f"{url}/api/v1/{endpoint}", headers=headers)
         resp.raise_for_status()
         return resp.json()
-    except requests.ConnectionError:
+    except httpx.ConnectError:
         return {"error": "n8n not running. Deploy with: docker-compose up n8n"}
-    except requests.RequestException as e:
+    except httpx.HTTPError as e:
         return {"error": f"n8n API error: {e}"}
 
 
@@ -60,7 +61,7 @@ def _n8n_request(endpoint: str, method: str = "GET", data: dict | None = None) -
     },
 )
 async def n8n_list_workflows() -> str:
-    result = _n8n_request("workflows")
+    result = await _n8n_request("workflows")
     if "error" in result:
         return result["error"]
 
@@ -114,18 +115,18 @@ async def n8n_trigger_workflow(workflow_id: str, data: str = "{}") -> str:
 
     # n8n webhook trigger endpoint
     try:
-        resp = requests.post(
-            f"{url}/api/v1/workflows/{workflow_id}/activate",
-            json=payload,
-            headers=headers,
-            timeout=30,
-        )
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.post(
+                f"{url}/api/v1/workflows/{workflow_id}/activate",
+                json=payload,
+                headers=headers,
+            )
         if resp.status_code in (200, 201):
             return f"Workflow {workflow_id} triggered. ✅"
         return f"Failed to trigger workflow: {resp.status_code} {resp.text[:200]}"
-    except requests.ConnectionError:
+    except httpx.ConnectError:
         return "n8n not running."
-    except requests.RequestException as e:
+    except httpx.HTTPError as e:
         return f"n8n trigger error: {e}"
 
 
@@ -140,10 +141,11 @@ async def n8n_trigger_workflow(workflow_id: str, data: str = "{}") -> str:
 async def n8n_status() -> str:
     url, _ = _get_n8n_config()
     try:
-        resp = requests.get(f"{url}/healthz", timeout=10)
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(f"{url}/healthz")
         if resp.status_code == 200:
             # Get execution stats
-            exec_result = _n8n_request("executions?limit=5")
+            exec_result = await _n8n_request("executions?limit=5")
             recent = exec_result.get("data", [])
 
             lines = [f"⚡ **n8n Status:** Running at {url}\n"]
@@ -155,5 +157,5 @@ async def n8n_status() -> str:
                     lines.append(f"  {status} {wf_name}")
             return "\n".join(lines)
         return f"n8n unhealthy: status {resp.status_code}"
-    except requests.ConnectionError:
+    except httpx.ConnectError:
         return f"n8n not running at {url}. Deploy with docker-compose."

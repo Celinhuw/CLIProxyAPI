@@ -7,6 +7,8 @@ and monitoring court movements.
 import json
 import logging
 
+import httpx
+
 import bot_state
 from agent import tool
 
@@ -20,10 +22,8 @@ def _get_intima_token() -> str | None:
     return get_config_value("INTIMA_AI_TOKEN")
 
 
-def _intima_request(endpoint: str, params: dict | None = None) -> dict:
-    """Make an authenticated request to INTIMA.AI API."""
-    import requests
-
+async def _intima_request(endpoint: str, params: dict | None = None) -> dict:
+    """Make an authenticated async request to INTIMA.AI API."""
     token = _get_intima_token()
     if not token:
         raise ValueError(
@@ -32,12 +32,12 @@ def _intima_request(endpoint: str, params: dict | None = None) -> dict:
         )
 
     headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
-    resp = requests.get(
-        f"{_INTIMA_API_URL}/{endpoint}",
-        params=params or {},
-        headers=headers,
-        timeout=30,
-    )
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.get(
+            f"{_INTIMA_API_URL}/{endpoint}",
+            params=params or {},
+            headers=headers,
+        )
     resp.raise_for_status()
     return resp.json()
 
@@ -63,7 +63,7 @@ async def check_case_status(processo: str) -> str:
         return "Please provide a case number."
 
     try:
-        data = _intima_request("processos/consulta", {"numero": processo})
+        data = await _intima_request("processos/consulta", {"numero": processo})
     except ValueError as e:
         return str(e)
     except Exception as e:
@@ -120,7 +120,7 @@ async def check_case_status(processo: str) -> str:
 )
 async def list_deadlines(status: str = "active") -> str:
     try:
-        data = _intima_request("prazos", {"status": status})
+        data = await _intima_request("prazos", {"status": status})
     except ValueError as e:
         return str(e)
     except Exception as e:

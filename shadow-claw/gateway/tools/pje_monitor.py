@@ -161,7 +161,7 @@ async def list_my_cases(oab_number: str) -> str:
     # Redirect to INTIMA.AI which supports OAB-based search
     try:
         from tools.legal import _intima_request
-        data = _intima_request("processos/consulta", {"oab": clean})
+        data = await _intima_request("processos/consulta", {"oab": clean})
         cases = data.get("data", [])
         if not cases:
             return f"No active cases found for OAB {clean}."

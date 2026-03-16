@@ -9,7 +9,7 @@ Requires inbox-zero running as a Docker service on the VPS.
 import json
 import logging
 
-import requests
+import httpx
 
 import bot_state
 from agent import tool
@@ -24,19 +24,20 @@ def _get_inbox_zero_url() -> str:
     return get_config_value("INBOX_ZERO_URL", _INBOX_ZERO_URL)
 
 
-def _inbox_request(endpoint: str, method: str = "GET", data: dict | None = None) -> dict:
-    """Make a request to inbox-zero API."""
+async def _inbox_request(endpoint: str, method: str = "GET", data: dict | None = None) -> dict:
+    """Make an async request to inbox-zero API."""
     url = f"{_get_inbox_zero_url()}/api/{endpoint}"
     try:
-        if method == "POST":
-            resp = requests.post(url, json=data, timeout=30)
-        else:
-            resp = requests.get(url, timeout=30)
+        async with httpx.AsyncClient(timeout=30) as client:
+            if method == "POST":
+                resp = await client.post(url, json=data)
+            else:
+                resp = await client.get(url)
         resp.raise_for_status()
         return resp.json()
-    except requests.ConnectionError:
+    except httpx.ConnectError:
         return {"error": "inbox-zero not running. Deploy with: docker-compose up inbox-zero"}
-    except requests.RequestException as e:
+    except httpx.HTTPError as e:
         return {"error": f"inbox-zero API error: {e}"}
 
 
@@ -56,7 +57,7 @@ def _inbox_request(endpoint: str, method: str = "GET", data: dict | None = None)
     },
 )
 async def email_summary(limit: int = 20) -> str:
-    result = _inbox_request("emails/unread")
+    result = await _inbox_request("emails/unread")
     if "error" in result:
         return result["error"]
 
@@ -121,7 +122,7 @@ async def email_summary(limit: int = 20) -> str:
     },
 )
 async def email_archive_newsletters() -> str:
-    result = _inbox_request("emails/archive-newsletters", method="POST")
+    result = await _inbox_request("emails/archive-newsletters", method="POST")
     if "error" in result:
         return result["error"]
 

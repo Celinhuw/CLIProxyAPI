@@ -7,6 +7,8 @@ Detects anomalies by comparing current metrics against 7-day baselines.
 import json
 import logging
 
+import httpx
+
 import bot_state
 from agent import tool
 
@@ -61,11 +63,6 @@ async def analyze_meta_ads(account_id: str, period: str = "yesterday") -> str:
     }
     date_preset = period_map.get(period, "yesterday")
 
-    try:
-        import requests
-    except ImportError:
-        return "requests library not available."
-
     # Fetch campaign insights — token via header to avoid log leakage
     url = f"{_GRAPH_API_URL}/{account_id}/insights"
     params = {
@@ -77,12 +74,13 @@ async def analyze_meta_ads(account_id: str, period: str = "yesterday") -> str:
     headers = {"Authorization": f"Bearer {token}"}
 
     try:
-        resp = requests.get(url, params=params, headers=headers, timeout=30)
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.get(url, params=params, headers=headers)
         if resp.status_code == 401:
             return "Meta Ads token expired or invalid. Generate a new one."
         resp.raise_for_status()
         data = resp.json().get("data", [])
-    except requests.RequestException as e:
+    except httpx.HTTPError as e:
         return f"Meta Ads API error: {e}"
 
     if not data:

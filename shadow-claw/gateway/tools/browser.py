@@ -1,6 +1,6 @@
 """Browser tools: browse URLs and search the web.
 
-Uses requests for HTTP (with SSRF blocklist) and Scrapling's Adaptor
+Uses httpx async for HTTP (with SSRF blocklist) and Scrapling's Adaptor
 for HTML parsing (anti-bot-aware, adaptive selectors). Falls back to
 regex stripping when Scrapling is unavailable.
 """
@@ -11,7 +11,7 @@ import re
 import socket
 from urllib.parse import urlparse
 
-import requests
+import httpx
 
 from agent import tool
 from config import truncate_text
@@ -115,24 +115,19 @@ async def browse_url(url: str, question: str | None = None) -> str:
         return "URL blocked: cannot access internal/private addresses."
 
     try:
-        resp = requests.get(
-            url,
-            timeout=_REQUEST_TIMEOUT,
-            headers={"User-Agent": "Shadow-Claw/1.0"},
-            stream=True,
-        )
-        # Check content length before reading
+        async with httpx.AsyncClient(timeout=_REQUEST_TIMEOUT, follow_redirects=True) as client:
+            resp = await client.get(url, headers={"User-Agent": "Shadow-Claw/1.0"})
         content_length = int(resp.headers.get("content-length", 0))
         if content_length > _MAX_CONTENT_BYTES:
             return f"Page too large ({content_length} bytes). Maximum is {_MAX_CONTENT_BYTES} bytes."
 
         content = resp.content[:_MAX_CONTENT_BYTES]
         html = content.decode("utf-8", errors="replace")
-    except requests.Timeout:
+    except httpx.TimeoutException:
         return f"Request to {url} timed out after {_REQUEST_TIMEOUT}s."
-    except requests.ConnectionError as e:
+    except httpx.ConnectError as e:
         return f"Could not connect to {url}: {e}"
-    except requests.RequestException as e:
+    except httpx.HTTPError as e:
         return f"Error fetching {url}: {e}"
 
     text = _extract_text(html)
@@ -160,14 +155,14 @@ async def browse_url(url: str, question: str | None = None) -> str:
 )
 async def browse_search(query: str) -> str:
     try:
-        resp = requests.get(
-            "https://html.duckduckgo.com/html/",
-            params={"q": query},
-            timeout=_REQUEST_TIMEOUT,
-            headers={"User-Agent": "Shadow-Claw/1.0"},
-        )
+        async with httpx.AsyncClient(timeout=_REQUEST_TIMEOUT) as client:
+            resp = await client.get(
+                "https://html.duckduckgo.com/html/",
+                params={"q": query},
+                headers={"User-Agent": "Shadow-Claw/1.0"},
+            )
         resp.raise_for_status()
-    except requests.RequestException as e:
+    except httpx.HTTPError as e:
         return f"Search failed: {e}"
 
     results = []

@@ -2,7 +2,11 @@
 
 import logging
 
-import requests
+try:
+    import httpx
+    _HTTP_AVAILABLE = True
+except ImportError:
+    _HTTP_AVAILABLE = False
 
 from attention_queue import AttentionItem, Urgency
 
@@ -15,12 +19,16 @@ async def check_site_changes(context) -> list[AttentionItem]:
     """Query changedetection.io API for recent changes."""
     items = []
 
+    if not _HTTP_AVAILABLE:
+        LOGGER.debug("httpx not installed — site monitor disabled")
+        return items
+
     try:
-        resp = requests.get(
-            f"{_CHANGEDETECTION_URL}/api/v1/watch",
-            timeout=10,
-            headers={"Accept": "application/json"},
-        )
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(
+                f"{_CHANGEDETECTION_URL}/api/v1/watch",
+                headers={"Accept": "application/json"},
+            )
         if resp.status_code != 200:
             return items
 
@@ -41,7 +49,7 @@ async def check_site_changes(context) -> list[AttentionItem]:
                     actions=["Ver diff", "Ignorar"],
                 ))
 
-    except requests.ConnectionError:
+    except httpx.ConnectError:
         LOGGER.debug("changedetection.io not running at %s", _CHANGEDETECTION_URL)
     except Exception as e:
         LOGGER.error("Site monitor failed: %s", e)
