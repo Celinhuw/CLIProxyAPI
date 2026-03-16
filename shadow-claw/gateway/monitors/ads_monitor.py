@@ -1,9 +1,15 @@
-"""Ads monitor — checks Meta Ads performance anomalies."""
+"""Ads monitor — checks Meta Ads performance anomalies.
+
+Routes through ToolRegistry.invoke() for audit logging, timeout,
+and rate limiting consistency with the agent loop.
+"""
 
 import logging
 
 import bot_state
+from agent import ToolRegistry
 from attention_queue import AttentionItem, Urgency
+from config import get_config_value
 
 LOGGER = logging.getLogger("shadow_claw_gateway.monitors.ads")
 
@@ -14,17 +20,16 @@ async def check_ads_performance(context) -> list[AttentionItem]:
     """Query Meta Ads for performance anomalies."""
     items = []
 
-    config = bot_state.config
-    if config is None:
-        return items
-
-    account_id = config.extra.get("META_ADS_ACCOUNT_ID") if hasattr(config, "extra") else None
+    account_id = get_config_value("META_ADS_ACCOUNT_ID")
     if not account_id:
         return items
 
     try:
-        from tools.marketing import analyze_meta_ads
-        result = await analyze_meta_ads(account_id=account_id, period="yesterday")
+        result = await ToolRegistry.invoke(
+            "analyze_meta_ads",
+            {"account_id": account_id, "period": "yesterday"},
+            log_event=bot_state.log_event,
+        )
 
         if "error" in result.lower() or "not configured" in result.lower():
             return items

@@ -1,8 +1,13 @@
-"""Legal monitor — checks court deadlines via INTIMA.AI."""
+"""Legal monitor — checks court deadlines via INTIMA.AI.
+
+Routes through ToolRegistry.invoke() for audit logging, timeout,
+and rate limiting consistency with the agent loop.
+"""
 
 import logging
 
 import bot_state
+from agent import ToolRegistry
 from attention_queue import AttentionItem, Urgency
 
 LOGGER = logging.getLogger("shadow_claw_gateway.monitors.legal")
@@ -13,8 +18,9 @@ async def check_deadlines(context) -> list[AttentionItem]:
     items = []
 
     try:
-        from tools.legal import list_deadlines
-        result = await list_deadlines(status="active")
+        result = await ToolRegistry.invoke(
+            "list_deadlines", {"status": "active"}, log_event=bot_state.log_event
+        )
 
         if "No active deadlines" in result:
             return items

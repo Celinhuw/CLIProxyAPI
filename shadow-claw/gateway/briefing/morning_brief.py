@@ -1,10 +1,15 @@
-"""Morning brief — daily 8am compiled summary of everything that needs attention."""
+"""Morning brief — daily 8am compiled summary of everything that needs attention.
+
+Routes through ToolRegistry.invoke() for audit logging consistency.
+"""
 
 import logging
 from datetime import datetime
 
 import bot_state
+from agent import ToolRegistry
 from attention_queue import AttentionItem, Urgency, URGENCY_EMOJI
+from config import get_config_value
 
 LOGGER = logging.getLogger("shadow_claw_gateway.briefing")
 
@@ -17,8 +22,9 @@ async def compile_morning_brief() -> str:
 
     # 1. Court deadlines
     try:
-        from tools.legal import list_deadlines
-        deadlines = await list_deadlines(status="active")
+        deadlines = await ToolRegistry.invoke(
+            "list_deadlines", {"status": "active"}, log_event=bot_state.log_event
+        )
         if "No active deadlines" not in deadlines:
             sections.append("⚖️ **Prazos Jurídicos:**")
             sections.append(deadlines[:500])
@@ -28,13 +34,13 @@ async def compile_morning_brief() -> str:
 
     # 2. Ads performance
     try:
-        config = bot_state.config
-        account_id = None
-        if config and hasattr(config, "extra"):
-            account_id = config.extra.get("META_ADS_ACCOUNT_ID")
+        account_id = get_config_value("META_ADS_ACCOUNT_ID")
         if account_id:
-            from tools.marketing import analyze_meta_ads
-            ads = await analyze_meta_ads(account_id=account_id, period="yesterday")
+            ads = await ToolRegistry.invoke(
+                "analyze_meta_ads",
+                {"account_id": account_id, "period": "yesterday"},
+                log_event=bot_state.log_event,
+            )
             if "error" not in ads.lower() and "not configured" not in ads.lower():
                 sections.append("📊 **Meta Ads (ontem):**")
                 sections.append(ads[:400])
