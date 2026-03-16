@@ -1,0 +1,14 @@
+{
+  "id": "session-1773553917436",
+  "startedAt": "2026-03-15T05:51:57.436Z",
+  "cwd": "/home/celo/CLIProxyAPI/shadow-claw/gateway",
+  "context": {},
+  "metrics": {
+    "edits": 1,
+    "commands": 0,
+    "tasks": 0,
+    "errors": 0
+  },
+  "endedAt": "2026-03-15T05:58:52.088Z",
+  "duration": 414652
+}

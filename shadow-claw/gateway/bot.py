@@ -604,6 +604,19 @@ def _init_subsystems() -> None:
             from knowledge_vault import KnowledgeVault
             from approvals import ApprovalStore
 
+            # Try cognee for semantic search; fall back to SQLite FTS5
+            try:
+                from adapters.cognee_adapter import CogneeKnowledgeVault, is_cognee_available
+                if is_cognee_available():
+                    vault = CogneeKnowledgeVault()
+                    bot_state.log_event("knowledge.backend", backend="cognee")
+                else:
+                    vault = KnowledgeVault(bot_state.conversation_manager)
+                    bot_state.log_event("knowledge.backend", backend="sqlite_fts5")
+            except Exception:
+                vault = KnowledgeVault(bot_state.conversation_manager)
+                bot_state.log_event("knowledge.backend", backend="sqlite_fts5_fallback")
+
             gmail = GmailConnector(
                 access_token=config.get("gmail_access_token"),
                 refresh_token=config.get("gmail_refresh_token"),
@@ -617,7 +630,7 @@ def _init_subsystems() -> None:
             register_inbox_tools(gmail)
             register_calendar_tools(calendar)
             register_memory_tools(
-                vault=KnowledgeVault(bot_state.conversation_manager),
+                vault=vault,
                 manager=bot_state.conversation_manager,
             )
             bot_state.personal_agent_enabled = bool(config.get("personal_agent_enabled", True))

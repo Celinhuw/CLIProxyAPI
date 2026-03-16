@@ -1,0 +1,22 @@
+{
+  "id": "session-1773554897561",
+  "startedAt": "2026-03-15T06:08:17.561Z",
+  "cwd": "/home/celo/CLIProxyAPI/shadow-claw/gateway",
+  "context": {
+    "lastMatchedPatterns": [
+      "mem-MEMORY-environment-notes",
+      "insight-1773554332086-wgdt",
+      "mem-chrome-mcp-chrome-mcp-setup",
+      "mem-MEMORY-user-preferences"
+    ]
+  },
+  "metrics": {
+    "edits": 8,
+    "commands": 0,
+    "tasks": 0,
+    "errors": 0
+  },
+  "updatedAt": "2026-03-15T06:14:59.219Z",
+  "endedAt": "2026-03-15T06:19:29.689Z",
+  "duration": 672128
+}

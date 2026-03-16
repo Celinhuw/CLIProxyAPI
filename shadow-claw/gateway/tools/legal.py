@@ -16,10 +16,8 @@ _INTIMA_API_URL = "https://api.intima.ai/v2"
 
 
 def _get_intima_token() -> str | None:
-    cfg = bot_state.config
-    if cfg is None:
-        return None
-    return getattr(cfg, "intima_ai_token", None) or cfg.extra.get("INTIMA_AI_TOKEN")
+    from config import get_config_value
+    return get_config_value("INTIMA_AI_TOKEN")
 
 
 def _intima_request(endpoint: str, params: dict | None = None) -> dict:

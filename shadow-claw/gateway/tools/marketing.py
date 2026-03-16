@@ -18,10 +18,8 @@ _ANOMALY_THRESHOLD = 0.15  # 15% deviation from baseline
 
 def _get_meta_token() -> str | None:
     """Read META_ADS_TOKEN from config."""
-    cfg = bot_state.config
-    if cfg is None:
-        return None
-    return getattr(cfg, "meta_ads_token", None) or cfg.extra.get("META_ADS_TOKEN")
+    from config import get_config_value
+    return get_config_value("META_ADS_TOKEN")
 
 
 @tool(

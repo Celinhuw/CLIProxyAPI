@@ -4,8 +4,8 @@ import json
 import unittest
 from unittest.mock import MagicMock, patch
 
+from attention_queue import Urgency
 from handlers.legal_webhook import (
-    Urgency,
     classify_urgency,
     parse_webhook_payload,
     format_telegram_alert,

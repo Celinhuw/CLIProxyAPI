@@ -137,6 +137,22 @@ def extract_prompt_from_command(message_text: str, command_name: str) -> str:
     return (match.group(1) or "").strip()
 
 
+def get_config_value(key: str, default=None):
+    """Get a config value by key. Checks bot_state.config attributes and .extra dict."""
+    import bot_state
+    cfg = bot_state.config
+    if cfg is None:
+        return default
+    val = getattr(cfg, key.lower(), None)
+    if val is not None:
+        return val
+    if hasattr(cfg, "extra") and isinstance(cfg.extra, dict):
+        return cfg.extra.get(key, default)
+    if isinstance(cfg, dict):
+        return cfg.get(key, default)
+    return default
+
+
 def truncate_text(text: str, limit: int = MAX_TELEGRAM_MESSAGE_LENGTH) -> str:
     if text is None:
         return ""

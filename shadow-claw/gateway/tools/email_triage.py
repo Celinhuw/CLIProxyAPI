@@ -20,10 +20,8 @@ _INBOX_ZERO_URL = "http://localhost:3000"
 
 
 def _get_inbox_zero_url() -> str:
-    cfg = bot_state.config
-    if cfg and hasattr(cfg, "extra"):
-        return cfg.extra.get("INBOX_ZERO_URL", _INBOX_ZERO_URL)
-    return _INBOX_ZERO_URL
+    from config import get_config_value
+    return get_config_value("INBOX_ZERO_URL", _INBOX_ZERO_URL)
 
 
 def _inbox_request(endpoint: str, method: str = "GET", data: dict | None = None) -> dict:

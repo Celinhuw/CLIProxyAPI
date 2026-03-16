@@ -2,6 +2,7 @@
 
 import time
 import unittest
+from unittest.mock import AsyncMock, MagicMock
 
 from attention_queue import AttentionItem, AttentionQueue, Urgency
 
@@ -147,6 +148,84 @@ class TestDaemonRegistration(unittest.TestCase):
 
         # Cleanup
         bot_state.attention_queue = None
+
+
+class TestDaemonDispatch(unittest.IsolatedAsyncioTestCase):
+    """Test attention dispatch and callback handling."""
+
+    def setUp(self):
+        import bot_state
+        from attention_queue import AttentionQueue
+        bot_state.attention_queue = AttentionQueue()
+        self.queue = bot_state.attention_queue
+
+    def tearDown(self):
+        import bot_state
+        bot_state.attention_queue = None
+
+    @unittest.mock.patch.dict("sys.modules", {
+        "telegram": MagicMock(),
+    })
+    async def test_dispatch_sends_batch(self):
+        """Dispatch pops items and calls bot.send_message."""
+        from daemon import _dispatch_attention
+        self.queue.push(AttentionItem(
+            source="legal", urgency=Urgency.CRITICAL, title="Prazo", body="2 dias"
+        ))
+
+        mock_context = MagicMock()
+        mock_context.job.data = {"chat_id": 12345}
+        mock_context.bot.send_message = AsyncMock()
+
+        await _dispatch_attention(mock_context)
+
+        mock_context.bot.send_message.assert_called_once()
+        call_kwargs = mock_context.bot.send_message.call_args[1]
+        self.assertEqual(call_kwargs["chat_id"], 12345)
+        self.assertIn("Prazo", call_kwargs["text"])
+
+    async def test_dispatch_noop_when_empty(self):
+        """Dispatch does nothing when queue is empty."""
+        from daemon import _dispatch_attention
+        mock_context = MagicMock()
+        mock_context.job.data = {"chat_id": 12345}
+        mock_context.bot.send_message = AsyncMock()
+
+        await _dispatch_attention(mock_context)
+
+        mock_context.bot.send_message.assert_not_called()
+
+    async def test_callback_snooze(self):
+        """Snooze callback hides item."""
+        from daemon import attention_callback
+        item = AttentionItem(source="legal", urgency=Urgency.CRITICAL, title="Test", body="")
+        self.queue.push(item)
+
+        mock_update = MagicMock()
+        mock_update.callback_query.data = f"attn:snooze_4h:{item.content_hash}"
+        mock_update.callback_query.answer = AsyncMock()
+        mock_update.callback_query.edit_message_text = AsyncMock()
+
+        await attention_callback(mock_update, MagicMock())
+
+        mock_update.callback_query.edit_message_text.assert_called_once()
+        text = mock_update.callback_query.edit_message_text.call_args[0][0]
+        self.assertIn("Snoozed", text)
+
+    async def test_callback_dismiss(self):
+        """Dismiss callback removes item permanently."""
+        from daemon import attention_callback
+        item = AttentionItem(source="ads", urgency=Urgency.IMPORTANT, title="Test", body="")
+        self.queue.push(item)
+
+        mock_update = MagicMock()
+        mock_update.callback_query.data = f"attn:ignorar:{item.content_hash}"
+        mock_update.callback_query.answer = AsyncMock()
+        mock_update.callback_query.edit_message_text = AsyncMock()
+
+        await attention_callback(mock_update, MagicMock())
+
+        self.assertEqual(self.queue.pending_count, 0)
 
 
 if __name__ == "__main__":

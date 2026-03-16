@@ -22,7 +22,7 @@ from pathlib import Path
 
 LOGGER = logging.getLogger("shadow_claw_gateway.self_improvement.nudge")
 
-_DB_PATH = str(Path(__file__).parent.parent / "data" / "nudge.db")
+_DB_PATH = str(Path(__file__).parent.parent / "data" / "self_improvement.db")
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS nudge_events (

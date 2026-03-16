@@ -12,24 +12,10 @@ import json
 import logging
 import time
 from dataclasses import dataclass
-from enum import Enum
+
+from attention_queue import Urgency, URGENCY_EMOJI
 
 LOGGER = logging.getLogger("shadow_claw_gateway.handlers.legal_webhook")
-
-# ---------------------------------------------------------------------------
-# Urgency classification
-# ---------------------------------------------------------------------------
-
-class Urgency(str, Enum):
-    CRITICAL = "critical"   # 🔴 prazo < 5 dias úteis
-    IMPORTANT = "important"  # 🟡 intimação, citação
-    INFO = "info"           # 🔵 juntada, certidão, despacho de mero expediente
-
-_URGENCY_EMOJI = {
-    Urgency.CRITICAL: "🔴",
-    Urgency.IMPORTANT: "🟡",
-    Urgency.INFO: "🔵",
-}
 
 # Keywords that indicate urgency (Portuguese legal terms)
 _CRITICAL_KEYWORDS = frozenset({
@@ -111,9 +97,9 @@ def parse_webhook_payload(data: dict) -> CourtMovement:
 
 def format_telegram_alert(movement: CourtMovement) -> str:
     """Format a court movement as a Telegram message."""
-    emoji = _URGENCY_EMOJI[movement.urgency]
+    emoji = URGENCY_EMOJI[movement.urgency]
     lines = [
-        f"{emoji} **{movement.urgency.value.upper()}** — Movimentação Processual",
+        f"{emoji} **{movement.urgency.name}** — Movimentação Processual",
         "",
         f"📋 **Processo:** {movement.processo}",
         f"🏛 **Tribunal:** {movement.tribunal}",

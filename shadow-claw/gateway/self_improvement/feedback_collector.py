@@ -18,7 +18,7 @@ from pathlib import Path
 
 LOGGER = logging.getLogger("shadow_claw_gateway.self_improvement.feedback")
 
-_DB_PATH = str(Path(__file__).parent.parent / "data" / "feedback.db")
+_DB_PATH = str(Path(__file__).parent.parent / "data" / "self_improvement.db")
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS feedback (

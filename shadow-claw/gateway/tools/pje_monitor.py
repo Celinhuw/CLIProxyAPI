@@ -158,10 +158,29 @@ async def list_my_cases(oab_number: str) -> str:
     if not clean:
         return "Invalid OAB number. Use format: 123456/SP or SP/123456"
 
-    # PJe OAB search requires Selenium interaction
-    # This is a simplified version — full implementation needs form fill
-    return (
-        f"OAB search for {clean} is available but requires Selenium form interaction.\n"
-        f"For immediate results, use INTIMA.AI: check_case_status with your case numbers.\n"
-        f"Full OAB search will be available after Selenium form automation is implemented."
-    )
+    # Redirect to INTIMA.AI which supports OAB-based search
+    try:
+        from tools.legal import _intima_request
+        data = _intima_request("processos/consulta", {"oab": clean})
+        cases = data.get("data", [])
+        if not cases:
+            return f"No active cases found for OAB {clean}."
+
+        if isinstance(cases, dict):
+            cases = [cases]
+
+        lines = [f"📋 **Processos vinculados à OAB {clean}:**\n"]
+        for case in cases[:20]:
+            numero = case.get("numero_processo", case.get("processo", "?"))
+            tribunal = case.get("tribunal", case.get("orgao", ""))
+            status = case.get("status", case.get("situacao", ""))
+            lines.append(f"  - {numero} ({tribunal}) — {status}")
+
+        if len(cases) > 20:
+            lines.append(f"\n... e mais {len(cases) - 20} processos.")
+
+        return "\n".join(lines)
+    except ValueError as e:
+        return str(e)
+    except Exception as e:
+        return f"Failed to query cases for OAB {clean}: {e}"

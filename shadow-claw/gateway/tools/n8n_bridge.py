@@ -27,13 +27,8 @@ _N8N_URL = "http://localhost:5678"
 
 def _get_n8n_config() -> tuple[str, str | None]:
     """Get n8n URL and API key from config."""
-    cfg = bot_state.config
-    url = _N8N_URL
-    api_key = None
-    if cfg and hasattr(cfg, "extra"):
-        url = cfg.extra.get("N8N_URL", _N8N_URL)
-        api_key = cfg.extra.get("N8N_API_KEY")
-    return url, api_key
+    from config import get_config_value
+    return get_config_value("N8N_URL", _N8N_URL), get_config_value("N8N_API_KEY")
 
 
 def _n8n_request(endpoint: str, method: str = "GET", data: dict | None = None) -> dict:
