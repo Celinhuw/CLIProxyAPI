@@ -679,6 +679,12 @@ def main() -> None:
     application.add_handler(CallbackQueryHandler(tools_callback, pattern=r"^tools:"))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
+    # Daemon: register background monitors + attention queue
+    from daemon import register_monitors, attention_callback
+    register_monitors(application.job_queue, config["allowed_user_id"])
+    application.add_handler(CallbackQueryHandler(attention_callback, pattern=r"^attn:"))
+    bot_state.log_event("daemon.registered")
+
     print("Gateway conectado ao Telegram com sucesso! Pressione Ctrl+C para parar.")
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 

@@ -19,6 +19,7 @@ conversation_manager = None
 approval_store = None
 connector_registry = {}
 personal_agent_enabled = False
+attention_queue = None
 
 
 def log_event(event: str, **fields) -> None:
