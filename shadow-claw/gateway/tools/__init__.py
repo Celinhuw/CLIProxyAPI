@@ -22,3 +22,6 @@ from tools import legal  # noqa: F401
 from tools import pje_monitor  # noqa: F401
 from tools import company_research  # noqa: F401
 from tools import transcription  # noqa: F401
+from tools import email_triage  # noqa: F401
+from tools import seo  # noqa: F401
+from tools import n8n_bridge  # noqa: F401
